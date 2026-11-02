@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Re Nero Caffè – Slideshow Oriocenter</title>
+<link rel="preload" as="video" href="https://www.renero.it/images/slide/036.mp4" type="video/mp4">
+<style>
+  /* ===================== IMPOSTAZIONI MODIFICABILI ===================== */
+  :root{
+    --sfondo: #3B4144;      /* colore di fondo identico a quello del video */
+    
+  }
+  /* ==================================================================== */
+
+  html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--sfondo);
+    cursor:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
+  #stage{position:fixed;inset:0;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:var(--sfondo);}
+  #stage.top{align-items:flex-start;}
+  #stage.bottom{align-items:flex-end;}
+  .clip{position:absolute;inset:0;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center center;
+    background:transparent;opacity:0;transition:opacity var(--fade,1200ms) ease-in-out;pointer-events:none;
+    transform:translateZ(0);will-change:opacity;}
+  #stage.top .clip{object-position:center top;}
+  #stage.bottom .clip{object-position:center bottom;}
+  .clip.on{opacity:1;}
+  #vignette{position:fixed;inset:0;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:2;
+    box-shadow:inset 0 0 60px 30px var(--sfondo);}
+  #debug{position:fixed;left:8px;top:8px;z-index:9;font:14px/1.3 monospace;color:#fff;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:4px;display:none;}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video class="clip" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
+  <video class="clip" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
+</div>
+<div id="vignette"></div>
+<div id="debug"></div>
+
+<script>
+/* ===================== IMPOSTAZIONI MODIFICABILI ===================== */
+var CONFIG = {
+  // Elenco dei video da mostrare in sequenza (si possono aggiungerne altri)
+  video: [
+    "https://www.renero.it/images/slide/036.mp4"
+  ],
+  dissolvenza: 1200,   // durata della dissolvenza tra un giro e l'altro, in millisecondi
+  velocita:   1.0,     // 1.0 = normale; 0.8 = più lento e rilassato
+  allineamento: "center" // "center" (centrato), "top" (in alto), "bottom" (in basso)
+};
+/* ==================================================================== */
+
+(function(){
+  var stage = document.getElementById('stage');
+  var clips = document.querySelectorAll('.clip');
+  var dbg   = document.getElementById('debug');
+  var params = new URLSearchParams(location.search);
+  if (params.get('align')) CONFIG.allineamento = params.get('align');
+  if (params.get('speed')) CONFIG.velocita = parseFloat(params.get('speed')) || 1;
+  if (CONFIG.allineamento !== 'center') stage.classList.add(CONFIG.allineamento);
+  document.documentElement.style.setProperty('--fade', CONFIG.dissolvenza + 'ms');
+
+  var idx = 0, active = 0, switching = false, lastTime = -1, stuck = 0;
+
+  function load(v, src){
+    if (v.getAttribute('data-src') !== src){ v.src = src; v.setAttribute('data-src', src); v.load(); }
+    v.playbackRate = CONFIG.velocita;
+  }
+  function play(v){
+    var p = v.play(); if (p && p.catch) p.catch(function(){ setTimeout(function(){ v.play().catch(function(){}); }, 500); });
+  }
+
+  // Prepara il primo video e lo mostra con una dissolvenza in entrata
+  var first = clips[0];
+  first.classList.add('on');
+  load(first, CONFIG.video[0]);
+  play(first);
+  first.addEventListener('canplay', function once(){
+    first.removeEventListener('canplay', once);
+    play(first);
+    requestAnimationFrame(function(){ first.classList.add('on'); });
+  });
+  // Precarica il successivo
+  load(clips[1], CONFIG.video[(1) % CONFIG.video.length]);
+
+  // Dissolvenza incrociata verso il clip successivo, prima che quello attuale finisca
+  function crossfade(){
+    if (switching) return; switching = true;
+    var cur = clips[active], nxtI = 1 - active, nxt = clips[nxtI];
+    idx = (idx + 1) % CONFIG.video.length;
+    load(nxt, CONFIG.video[idx]);
+    try { nxt.currentTime = 0; } catch(e){}
+    play(nxt);
+    nxt.classList.add('on');
+    cur.classList.remove('on');
+    active = nxtI;
+    setTimeout(function(){
+      cur.pause();
+      // precarica quello dopo nel lettore libero
+      load(cur, CONFIG.video[(idx + 1) % CONFIG.video.length]);
+      try { cur.currentTime = 0; } catch(e){}
+      switching = false;
+    }, CONFIG.dissolvenza + 100);
+  }
+
+  // Controllo continuo: avvia la dissolvenza al momento giusto e riavvia se il video si blocca
+  function tick(){
+    var v = clips[active];
+    if (v.duration && !switching){
+      var restante = (v.duration - v.currentTime) / (v.playbackRate || 1);
+      if (restante * 1000 <= CONFIG.dissolvenza) crossfade();
+    }
+    if (dbg.style.display === 'block'){
+      dbg.textContent = 'Area: ' + innerWidth + ' x ' + innerHeight + ' px  |  video ' +
+        (v.videoWidth||'?') + 'x' + (v.videoHeight||'?') + '  t=' + (v.currentTime||0).toFixed(1);
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  setInterval(function(){
+    var v = clips[active];
+    if (switching) return;
+    if (v.currentTime === lastTime){ if (++stuck >= 3){ stuck = 0; try{ v.currentTime = 0; }catch(e){} play(v); v.classList.add('on'); } }
+    else stuck = 0;
+    lastTime = v.currentTime;
+  }, 2000);
+
+  clips.forEach ? clips.forEach(function(v){ v.addEventListener('ended', crossfade); v.addEventListener('error', function(){ setTimeout(function(){ v.load(); play(v); }, 3000); }); }) : null;
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
+
+  // Sicurezza: se dopo 4 secondi nessun video è visibile, mostra il primo in modo semplice
+  setTimeout(function(){ if (!clips[0].classList.contains('on') && !clips[1].classList.contains('on')){ clips[0].classList.add('on'); clips[0].loop = true; play(clips[0]); } }, 4000);
+
+  // ?debug=1 nell'indirizzo mostra le dimensioni reali dell'area sul kiosk
+  if (params.get('debug') === '1') dbg.style.display = 'block';
+})();
+</script>
+</body>
+</html>
