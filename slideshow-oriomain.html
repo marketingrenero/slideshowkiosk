@@ -4,136 +4,183 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Re Nero Caffè – Slideshow Oriocenter</title>
-<link rel="preload" as="video" href="https://www.renero.it/images/slide/036.mp4" type="video/mp4">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
 <style>
-  /* ===================== IMPOSTAZIONI MODIFICABILI ===================== */
+  /* ===================== IMPOSTAZIONI GRAFICHE ===================== */
   :root{
-    --sfondo: #3B4144;      /* colore di fondo identico a quello del video */
-    
+    --sfondo: #3B4144;   /* colore di fondo (uguale al video) */
+    --oro:    #CDBB8E;   /* colore del nome della pizza */
+    --pizza:  min(80vw, 56vh);  /* grandezza della pizza */
   }
-  /* ==================================================================== */
+  /* ================================================================ */
 
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--sfondo);
-    cursor:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;}
-  #stage{position:fixed;inset:0;top:0;left:0;right:0;bottom:0;display:flex;align-items:center;justify-content:center;background:var(--sfondo);}
-  #stage.top{align-items:flex-start;}
-  #stage.bottom{align-items:flex-end;}
-  .clip{position:absolute;inset:0;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center center;
-    background:transparent;opacity:0;transition:opacity var(--fade,1200ms) ease-in-out;pointer-events:none;
-    transform:translateZ(0);will-change:opacity;}
-  #stage.top .clip{object-position:center top;}
-  #stage.bottom .clip{object-position:center bottom;}
-  .clip.on{opacity:1;}
-  #vignette{position:fixed;inset:0;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:2;
-    box-shadow:inset 0 0 60px 30px var(--sfondo);}
-  #debug{position:fixed;left:8px;top:8px;z-index:9;font:14px/1.3 monospace;color:#fff;background:rgba(0,0,0,.6);padding:6px 8px;border-radius:4px;display:none;}
+    cursor:none;user-select:none;-webkit-user-select:none;}
+  #scena{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;
+    background:radial-gradient(ellipse at 50% 42%, #444b4f 0%, var(--sfondo) 60%);opacity:0;transition:opacity 1s ease;}
+  #scena.pronta{opacity:1;}
+  #logo{width:min(31vw,22vh);height:auto;margin-top:min(4.5vw,3vh);}
+  #palco{position:relative;width:var(--pizza);height:var(--pizza);margin-top:min(3vw,2vh);}
+  #palco canvas{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;
+    transition:opacity var(--fade,1200ms) ease-in-out;will-change:opacity,transform;}
+  #palco canvas.on{opacity:1;animation:respiro var(--durata,6000ms) ease-out forwards;}
+  @keyframes respiro{
+    from{transform:scale(.94) rotate(-7deg);}
+    to  {transform:scale(1.02) rotate(0deg);}
+  }
+  #nome{margin-top:min(3vw,2vh);height:min(10vw,7vh);display:flex;align-items:center;justify-content:center;
+    font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;font-weight:600;color:var(--oro);
+    font-size:min(8.5vw,6vh);letter-spacing:.06em;text-align:center;white-space:nowrap;
+    transition:opacity 600ms ease, transform 600ms ease;}
+  #nome.via{opacity:0;transform:translateY(12px);}
+  #filetto{width:min(14vw,10vh);height:1px;margin-top:min(2vw,1.4vh);background:linear-gradient(90deg,transparent,var(--oro),transparent);opacity:.6;}
+  #motto{width:min(62vw,44vh);height:auto;margin-top:min(3vw,2vh);}
+  #riserva{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center top;display:none;}
+  #sorgente{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;}
 </style>
 </head>
 <body>
-<div id="stage">
-  <video class="clip" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
-  <video class="clip" muted playsinline preload="auto" disablepictureinpicture disableremoteplayback></video>
+<div id="scena">
+  <canvas id="logo" width="330" height="105"></canvas>
+  <div id="palco"></div>
+  <div id="nome" class="via"></div>
+  <div id="filetto"></div>
+  <canvas id="motto" width="670" height="45"></canvas>
 </div>
-<div id="vignette"></div>
-<div id="debug"></div>
+<video id="riserva" muted loop playsinline></video>
+<video id="sorgente" muted playsinline preload="auto"></video>
 
 <script>
 /* ===================== IMPOSTAZIONI MODIFICABILI ===================== */
 var CONFIG = {
-  // Elenco dei video da mostrare in sequenza (si possono aggiungerne altri)
-  video: [
-    "https://www.renero.it/images/slide/036.mp4"
-  ],
-  dissolvenza: 1200,   // durata della dissolvenza tra un giro e l'altro, in millisecondi
-  velocita:   1.0,     // 1.0 = normale; 0.8 = più lento e rilassato
-  allineamento: "top"    // "center" (centrato), "top" (in alto), "bottom" (in basso)
+  // Video da cui vengono prese le foto delle pizze
+  video: "https://www.renero.it/images/slide/036.mp4",
+  durata: 6000,        // quanto resta ogni pizza, in millisecondi
+  dissolvenza: 1200,   // durata del passaggio tra una pizza e l'altra
+  casuale: false,      // true = ordine casuale ad ogni giro
+  // Pizze: nome da mostrare e secondo del video in cui compare
+  pizze: [
+    { nome: "Re Nero",                 t: 4.66 },
+    { nome: "Margherita",              t: 4.18 },
+    { nome: "Carrettiera",             t: 0.66 },
+    { nome: "Caprese",                 t: 0.18 },
+    { nome: "Pistacchio e Mortadella", t: 3.22 },
+    { nome: "Bufalina",                t: 2.42 },
+    { nome: "Fiocco",                  t: 2.10 },
+    { nome: "Nerano",                  t: 2.74 },
+    { nome: "Diavola",                 t: 7.06 },
+    { nome: "Siciliana",               t: 1.62 },
+    { nome: "Giàgiù",                  t: 7.54 },
+    { nome: "Speck e Funghi",          t: 5.14 },
+    { nome: "Cosacca",                 t: 1.14 },
+    { nome: "Filetto",                 t: 3.70 },
+    { nome: "Vesuvio",                 t: 6.10 },
+    { nome: "Marinara",                t: 6.58 },
+    { nome: "Würstel e Patatine",      t: 5.62 },
+    { nome: "Nutella",                 t: 8.02 }
+  ]
 };
 /* ==================================================================== */
 
 (function(){
-  var stage = document.getElementById('stage');
-  var clips = document.querySelectorAll('.clip');
-  var dbg   = document.getElementById('debug');
-  var params = new URLSearchParams(location.search);
-  if (params.get('align')) CONFIG.allineamento = params.get('align');
-  if (params.get('speed')) CONFIG.velocita = parseFloat(params.get('speed')) || 1;
-  if (CONFIG.allineamento !== 'center') stage.classList.add(CONFIG.allineamento);
-  document.documentElement.style.setProperty('--fade', CONFIG.dissolvenza + 'ms');
+  var scena = document.getElementById('scena');
+  var palco = document.getElementById('palco');
+  var nome  = document.getElementById('nome');
+  var src   = document.getElementById('sorgente');
+  var root  = document.documentElement.style;
+  root.setProperty('--fade', CONFIG.dissolvenza + 'ms');
+  root.setProperty('--durata', (CONFIG.durata + CONFIG.dissolvenza) + 'ms');
 
-  var idx = 0, active = 0, switching = false, lastTime = -1, stuck = 0;
+  var LATO = 740, CROP_X = 155, CROP_Y = 130;   // zona della pizza nel video
+  var tele = [], avviato = false;
 
-  function load(v, src){
-    if (v.getAttribute('data-src') !== src){ v.src = src; v.setAttribute('data-src', src); v.load(); }
-    v.playbackRate = CONFIG.velocita;
+  // Se qualcosa non va, mostra semplicemente il video originale in loop
+  function riserva(){
+    if (avviato) return; avviato = true;
+    scena.style.display = 'none';
+    var r = document.getElementById('riserva');
+    r.src = CONFIG.video; r.style.display = 'block';
+    r.play().catch(function(){});
   }
-  function play(v){
-    var p = v.play(); if (p && p.catch) p.catch(function(){ setTimeout(function(){ v.play().catch(function(){}); }, 500); });
-  }
+  var timerRiserva = setTimeout(riserva, 25000);
 
-  // Prepara il primo video e lo mostra con una dissolvenza in entrata
-  var first = clips[0];
-  first.classList.add('on');
-  load(first, CONFIG.video[0]);
-  play(first);
-  first.addEventListener('canplay', function once(){
-    first.removeEventListener('canplay', once);
-    play(first);
-    requestAnimationFrame(function(){ first.classList.add('on'); });
-  });
-  // Precarica il successivo
-  load(clips[1], CONFIG.video[(1) % CONFIG.video.length]);
-
-  // Dissolvenza incrociata verso il clip successivo, prima che quello attuale finisca
-  function crossfade(){
-    if (switching) return; switching = true;
-    var cur = clips[active], nxtI = 1 - active, nxt = clips[nxtI];
-    idx = (idx + 1) % CONFIG.video.length;
-    load(nxt, CONFIG.video[idx]);
-    try { nxt.currentTime = 0; } catch(e){}
-    play(nxt);
-    nxt.classList.add('on');
-    cur.classList.remove('on');
-    active = nxtI;
-    setTimeout(function(){
-      cur.pause();
-      // precarica quello dopo nel lettore libero
-      load(cur, CONFIG.video[(idx + 1) % CONFIG.video.length]);
-      try { cur.currentTime = 0; } catch(e){}
-      switching = false;
-    }, CONFIG.dissolvenza + 100);
+  function vaiA(t){
+    return new Promise(function(ok){
+      var fatto = false;
+      function fine(){ if (!fatto){ fatto = true; src.removeEventListener('seeked', fine); setTimeout(ok, 60); } }
+      src.addEventListener('seeked', fine);
+      src.currentTime = t;
+      setTimeout(fine, 3000);
+    });
   }
 
-  // Controllo continuo: avvia la dissolvenza al momento giusto e riavvia se il video si blocca
-  function tick(){
-    var v = clips[active];
-    if (v.duration && !switching){
-      var restante = (v.duration - v.currentTime) / (v.playbackRate || 1);
-      if (restante * 1000 <= CONFIG.dissolvenza) crossfade();
+  function ritaglia(cv, sx, sy, w, h){
+    cv.getContext('2d').drawImage(src, sx, sy, w, h, 0, 0, cv.width, cv.height);
+  }
+
+  function preparaPizza(){
+    var cv = document.createElement('canvas');
+    cv.width = LATO; cv.height = LATO;
+    var g = cv.getContext('2d');
+    g.drawImage(src, CROP_X, CROP_Y, LATO, LATO, 0, 0, LATO, LATO);
+    // bordi sfumati in modo circolare, così il ritaglio non si vede
+    g.globalCompositeOperation = 'destination-in';
+    var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.40, LATO/2, LATO/2, LATO/2);
+    rg.addColorStop(0, 'rgba(0,0,0,1)');
+    rg.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = rg; g.fillRect(0, 0, LATO, LATO);
+    return cv;
+  }
+
+  async function prepara(){
+    src.src = CONFIG.video;
+    await new Promise(function(ok, ko){ src.onloadeddata = ok; src.onerror = ko; });
+    // logo e scritta presi dal primo fotogramma
+    await vaiA(CONFIG.pizze[0].t);
+    ritaglia(document.getElementById('logo'), 370, 40, 330, 105);
+    ritaglia(document.getElementById('motto'), 190, 992, 670, 45);
+    for (var i = 0; i < CONFIG.pizze.length; i++){
+      await vaiA(CONFIG.pizze[i].t);
+      var cv = preparaPizza();
+      palco.appendChild(cv);
+      tele.push({ cv: cv, nome: CONFIG.pizze[i].nome });
     }
-    if (dbg.style.display === 'block'){
-      dbg.textContent = 'Area: ' + innerWidth + ' x ' + innerHeight + ' px  |  video ' +
-        (v.videoWidth||'?') + 'x' + (v.videoHeight||'?') + '  t=' + (v.currentTime||0).toFixed(1);
-    }
-    requestAnimationFrame(tick);
+    src.removeAttribute('src'); src.load();
   }
-  requestAnimationFrame(tick);
 
-  setInterval(function(){
-    var v = clips[active];
-    if (switching) return;
-    if (v.currentTime === lastTime){ if (++stuck >= 3){ stuck = 0; try{ v.currentTime = 0; }catch(e){} play(v); v.classList.add('on'); } }
-    else stuck = 0;
-    lastTime = v.currentTime;
-  }, 2000);
+  var ordine = [], pos = -1, attuale = null;
+  function nuovoGiro(){
+    ordine = tele.map(function(_, i){ return i; });
+    if (CONFIG.casuale){
+      for (var i = ordine.length - 1; i > 0; i--){ var j = Math.floor(Math.random()*(i+1)); var k = ordine[i]; ordine[i] = ordine[j]; ordine[j] = k; }
+    }
+    pos = -1;
+  }
 
-  clips.forEach ? clips.forEach(function(v){ v.addEventListener('ended', crossfade); v.addEventListener('error', function(){ setTimeout(function(){ v.load(); play(v); }, 3000); }); }) : null;
+  function prossima(){
+    if (++pos >= ordine.length) nuovoGiro(), pos = 0;
+    var t = tele[ordine[pos]];
+    if (attuale && attuale === t) return;
+    if (attuale) attuale.cv.classList.remove('on');
+    // riavvia l'animazione lenta
+    t.cv.classList.remove('on'); void t.cv.offsetWidth; t.cv.classList.add('on');
+    nome.classList.add('via');
+    setTimeout(function(){ nome.textContent = t.nome; nome.classList.remove('via'); }, Math.min(600, CONFIG.dissolvenza/2));
+    attuale = t;
+  }
+
+  prepara().then(function(){
+    if (avviato || !tele.length) return;
+    avviato = true; clearTimeout(timerRiserva);
+    nuovoGiro();
+    scena.classList.add('pronta');
+    prossima();
+    setInterval(prossima, CONFIG.durata);
+  }).catch(riserva);
+
   document.addEventListener('contextmenu', function(e){ e.preventDefault(); });
-
-  // Sicurezza: se dopo 4 secondi nessun video è visibile, mostra il primo in modo semplice
-  setTimeout(function(){ if (!clips[0].classList.contains('on') && !clips[1].classList.contains('on')){ clips[0].classList.add('on'); clips[0].loop = true; play(clips[0]); } }, 4000);
-
-  // ?debug=1 nell'indirizzo mostra le dimensioni reali dell'area sul kiosk
-  if (params.get('debug') === '1') dbg.style.display = 'block';
 })();
 </script>
 </body>
