@@ -93,7 +93,7 @@ var CONFIG = {
   root.setProperty('--fade', CONFIG.dissolvenza + 'ms');
   root.setProperty('--durata', (CONFIG.durata + CONFIG.dissolvenza) + 'ms');
 
-  var LATO = 740, CROP_X = 155, CROP_Y = 130;   // zona della pizza nel video
+  var LATO = 820, CROP_X = 115, CROP_Y = 90;    // zona della pizza nel video
   var tele = [], avviato = false;
 
   // Se qualcosa non va, mostra semplicemente il video originale in loop
@@ -139,7 +139,7 @@ var CONFIG = {
     g.drawImage(src, CROP_X, CROP_Y, LATO, LATO, 0, 0, LATO, LATO);
     // bordi sfumati in modo circolare, così il ritaglio non si vede
     g.globalCompositeOperation = 'destination-in';
-    var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.42, LATO/2, LATO/2, LATO*0.495);
+    var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.44, LATO/2, LATO/2, LATO*0.5);
     rg.addColorStop(0, 'rgba(0,0,0,1)');
     rg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = rg; g.fillRect(0, 0, LATO, LATO);
