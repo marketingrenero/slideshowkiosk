@@ -19,9 +19,9 @@
   html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:var(--sfondo);
     cursor:none;user-select:none;-webkit-user-select:none;}
   #scena{position:fixed;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;align-items:center;
-    background:radial-gradient(ellipse at 50% 42%, #444b4f 0%, var(--sfondo) 60%);opacity:0;transition:opacity 1s ease;}
+    background:var(--sfondo);opacity:0;transition:opacity 1s ease;}
   #scena.pronta{opacity:1;}
-  #logo{width:min(31vw,22vh);height:auto;margin-top:min(4.5vw,3vh);}
+  #logo{width:min(36vw,26vh);height:auto;margin-top:min(4.5vw,3vh);}
   #palco{position:relative;width:var(--pizza);height:var(--pizza);margin-top:min(3vw,2vh);}
   #palco canvas{position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;
     transition:opacity var(--fade,1200ms) ease-in-out;will-change:opacity,transform;}
@@ -36,18 +36,18 @@
     transition:opacity 600ms ease, transform 600ms ease;}
   #nome.via{opacity:0;transform:translateY(12px);}
   #filetto{width:min(14vw,10vh);height:1px;margin-top:min(2vw,1.4vh);background:linear-gradient(90deg,transparent,var(--oro),transparent);opacity:.6;}
-  #motto{width:min(62vw,44vh);height:auto;margin-top:min(3vw,2vh);}
+  #motto{width:min(73vw,52vh);height:auto;margin-top:min(3vw,2vh);}
   #riserva{position:fixed;top:0;left:0;width:100%;height:100%;object-fit:contain;object-position:center top;display:none;}
   #sorgente{position:fixed;width:2px;height:2px;opacity:0;pointer-events:none;}
 </style>
 </head>
 <body>
 <div id="scena">
-  <canvas id="logo" width="330" height="105"></canvas>
+  <canvas id="logo" width="390" height="140"></canvas>
   <div id="palco"></div>
   <div id="nome" class="via"></div>
   <div id="filetto"></div>
-  <canvas id="motto" width="670" height="45"></canvas>
+  <canvas id="motto" width="790" height="63"></canvas>
 </div>
 <video id="riserva" muted loop playsinline></video>
 <video id="sorgente" muted playsinline preload="auto"></video>
@@ -117,7 +117,19 @@ var CONFIG = {
   }
 
   function ritaglia(cv, sx, sy, w, h){
-    cv.getContext('2d').drawImage(src, sx, sy, w, h, 0, 0, cv.width, cv.height);
+    var g = cv.getContext('2d'), W = cv.width, H = cv.height;
+    g.drawImage(src, sx, sy, w, h, 0, 0, W, H);
+    // sfuma i bordi del ritaglio nel fondo
+    g.globalCompositeOperation = 'destination-in';
+    var o = g.createLinearGradient(0, 0, W, 0);
+    o.addColorStop(0, 'rgba(0,0,0,0)'); o.addColorStop(0.10, 'rgba(0,0,0,1)');
+    o.addColorStop(0.90, 'rgba(0,0,0,1)'); o.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = o; g.fillRect(0, 0, W, H);
+    var v = g.createLinearGradient(0, 0, 0, H);
+    v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(0.15, 'rgba(0,0,0,1)');
+    v.addColorStop(0.85, 'rgba(0,0,0,1)'); v.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = v; g.fillRect(0, 0, W, H);
+    g.globalCompositeOperation = 'source-over';
   }
 
   function preparaPizza(){
@@ -127,7 +139,7 @@ var CONFIG = {
     g.drawImage(src, CROP_X, CROP_Y, LATO, LATO, 0, 0, LATO, LATO);
     // bordi sfumati in modo circolare, così il ritaglio non si vede
     g.globalCompositeOperation = 'destination-in';
-    var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.40, LATO/2, LATO/2, LATO/2);
+    var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.42, LATO/2, LATO/2, LATO*0.495);
     rg.addColorStop(0, 'rgba(0,0,0,1)');
     rg.addColorStop(1, 'rgba(0,0,0,0)');
     g.fillStyle = rg; g.fillRect(0, 0, LATO, LATO);
@@ -139,8 +151,8 @@ var CONFIG = {
     await new Promise(function(ok, ko){ src.onloadeddata = ok; src.onerror = ko; });
     // logo e scritta presi dal primo fotogramma
     await vaiA(CONFIG.pizze[0].t);
-    ritaglia(document.getElementById('logo'), 370, 40, 330, 105);
-    ritaglia(document.getElementById('motto'), 190, 992, 670, 45);
+    ritaglia(document.getElementById('logo'), 340, 20, 390, 140);
+    ritaglia(document.getElementById('motto'), 135, 982, 790, 63);
     for (var i = 0; i < CONFIG.pizze.length; i++){
       await vaiA(CONFIG.pizze[i].t);
       var cv = preparaPizza();
