@@ -137,6 +137,7 @@ var CONFIG = {
     cv.width = LATO; cv.height = LATO;
     var g = cv.getContext('2d');
     g.drawImage(src, CROP_X, CROP_Y, LATO, LATO, 0, 0, LATO, LATO);
+    g.clearRect(0, 0, LATO, 155 - CROP_Y);   // toglie la scritta del logo presente nel video sopra la pizza
     // bordi sfumati in modo circolare, così il ritaglio non si vede
     g.globalCompositeOperation = 'destination-in';
     var rg = g.createRadialGradient(LATO/2, LATO/2, LATO*0.44, LATO/2, LATO/2, LATO*0.5);
